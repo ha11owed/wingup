@@ -538,13 +538,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpszCmdLine, int)
 		
 		::CreateThread(NULL, 0, launchProgressBar, NULL, 0, NULL);
 		
+		bool isPortable = false;
 		std::string dlDest = std::getenv("TEMP");
 		dlDest += "\\";
 		dlDest += ::PathFindFileNameA(gupDlInfo.getDownloadLocation().c_str());
 
         char *ext = ::PathFindExtensionA(gupDlInfo.getDownloadLocation().c_str());
-        if (strcmp(ext, ".exe") != 0)
-            dlDest += ".exe";
+		if (strcmp(ext, ".zip") == 0)
+		{
+			// the installation is portable. We have to unzip the file to the install location
+			isPortable = true;
+		}
+		else if (strcmp(ext, ".msi") == 0)
+		{
+			// We have a Microsoft installer. This can be treated as an exe.
+		}
+		else if (strcmp(ext, ".exe") != 0)
+		{
+			// Kept for compatibility reasons. If we don't have an extension, we assume the file is an exe.
+			dlDest += ".exe";
+		}
 
 		dlFileName = ::PathFindFileNameA(gupDlInfo.getDownloadLocation().c_str());
 
@@ -622,13 +635,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpszCmdLine, int)
 			}
 		}
 
-		// execute the installer
-		HINSTANCE result = ::ShellExecuteA(NULL, "open", dlDest.c_str(), "", ".", SW_SHOW);
-        
-        if (result <= (HINSTANCE)32) // There's a problem (Don't ask me why, ask Microsoft)
-        {
-            return -1;
-        }   
+		if (isPortable)
+		{
+			// unzip the content to the install location
+			OFSTRUCT ofs;
+			INT fileHandle = ::LZOpenFileA(dlDest.c_str(), &ofs, OF_READ);
+		}
+		else
+		{
+			// execute the installer
+			HINSTANCE result = ::ShellExecuteA(NULL, "open", dlDest.c_str(), "", ".", SW_SHOW);
+
+			if (result <= (HINSTANCE)32) // There's a problem (Don't ask me why, ask Microsoft)
+			{
+				return -1;
+			}
+		}
 		return 0;
 
 	} catch (exception ex) {
